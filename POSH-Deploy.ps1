@@ -38,6 +38,7 @@ $VerbosePreference = 'continue' #setting this as all the verbose messages are di
         <Label Content="Created by DexterPOSH" Height="31" HorizontalAlignment="Left" Margin="1089,676,0,0" Name="labelName" VerticalAlignment="Top" Width="164" FontSize="14" Foreground="Red"></Label>
         <Image Height="36" HorizontalAlignment="Left" Margin="1044,673,0,0" Name="image1" Stretch="Fill" VerticalAlignment="Top" Width="37" />
         <TextBox Height="199" HorizontalAlignment="Left" Margin="803,112,0,0" Name="textBoxlog" VerticalAlignment="Top" Width="433" Background="#FFD1F8A9" />
+        <Button Content="Collection Integrity Check" Height="25" HorizontalAlignment="Left" Margin="186,676,0,0" Name="buttonIntegrity" VerticalAlignment="Top" Width="166" ToolTip="Does a check on the last 3 collections in PS_deploy.csv"/>
     </Grid>
 </Window>
 
@@ -82,29 +83,6 @@ else
 }
 
 
-#All the Queries before deleting will be saved in User Desktop in a file named PS_Audit.csv 
-if (Test-Path -Path $PSAuditFile -Type leaf )
-{
-	#put the date in it
-		
-	if ( $((Get-Item -Path 	$PSAuditFile).length/1MB) -ge 10MB)
-	{
-		"Size exceeded 10 MB on $(get-date)..so renaming it to QueryBackup.bak and creating new PS_Audit.csv"	
-        Rename-Item -Path $PSAuditFile -NewName "QueryBackup.bak" -Force -Verbose
-        New-Item -Path $PSAuditFile -ItemType file -Verbose
-	}
-	else
-	{
-		Write-Verbose -Message "[POSH Deploy] Size of PS_Audit.csv is below 10MB...continuing"
-	}
-}
-else
-{
-	Write-Verbose -Message "[POSH Deploy] PS_Audit.csv not found....creating one in $([System.Environment]::GetFolderPath('Desktop'))"
-    New-Item -Path $PSAuditFile -ItemType file -Verbose
-	
-}
-
 #endregion
 
 
@@ -125,6 +103,7 @@ $buttonSyncApps = $Window.FindName('buttonSyncApps')
 $checkBoxCred = $Window.FindName('checkBoxCred')
 $DexLabel = $Window.FindName('labelName')
 $textBoxlog = $Window.findName('textBoxlog')
+$buttonIntegrity=$Window.FindName('buttonIntegrity')
 #endregion Connect to Control
 
 
@@ -518,7 +497,7 @@ function Add-MachineToSCCMCollection
             $TempQueryRule = $QueryRuleClass.createinstance()
             $TempQueryRule.QueryExpression = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SMS_R_System.NetbiosName in ("null")'
             $TempQueryRule.RuleName = 'Automated_QueryRule'
-            $Collection.AddMembershipRule($TempQueryRule) | Out-Null
+            $null = $Collection.AddMembershipRule($TempQueryRule) 
             $Collection.get()
             
 			$QueryRules = $Collection.CollectionRules			
@@ -533,7 +512,7 @@ function Add-MachineToSCCMCollection
 				
 		try 
 		    {
-                $Collection = Get-WmiObject -Class SMS_Collection -Filter "CollectionID='$collectionid'" @WMIHash
+                $Collection = Get-WmiObject -Class SMS_Collection -Filter "CollectionID='$collectionid'" @Script:WMIHash
 		    
 		        Write-Verbose "Add-MachineToSCCMCollection: Queried the Collection $($collection.name) with CollectionId : $collectionid  successfully"
 				$Collection.Get() #Invoke Get Method to get the Lazy Properties back
@@ -656,10 +635,10 @@ function Add-MachineToSCCMCollection
 	            Write-Host -ForegroundColor Green "Add-MachineToSCCMCollection: The Automated_QueryRule's QueryExpression is validated....Saving it now"
 	            try 
 			    {
-                    #Before deleting the QueryExpression..take the backup i
-			        $collection.DeleteMembershipRule($Automated_QueryRule) | Out-Null
+                    # deleting the QueryRule.
+			        $null = $collection.DeleteMembershipRule($Automated_QueryRule) 
 			        Write-Verbose "Add-MachineToSCCMCollection: Invoked Method DeleteMembershipRule on the Collection"
-			        $collection.RequestRefresh() | Out-Null
+			        $null = $collection.RequestRefresh() 
 			        Write-Verbose "Add-MachineToSCCMCollection: Invoked Method RequestRefresh on the Collection"
 			    }
 			    catch
@@ -687,16 +666,16 @@ function Add-MachineToSCCMCollection
 			    #means the collection is ready for the update
 			    try 
 			    {
-			        $collection.AddmembershipRule($Automated_QueryRule) | Out-Null
+			        $null = $collection.AddmembershipRule($Automated_QueryRule) 
 			        Write-Verbose "Add-MachineToSCCMCollection: Invoked Method AddMembershipRule on the Collection"
-			        $collection.RequestRefresh() | Out-Null
+			        $null = $collection.RequestRefresh() 
 			        Write-Verbose "Add-MachineToSCCMCollection: Invoked Method RequestRefresh on the Collection"
 														
 			    }
 			    catch
 			    {
-			        Write-Error "Add-MachineToSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
-			        throw $_.exception 
+			        Write-Warning "Add-MachineToSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
+			        Write-Error -Exception $_.exception -ErrorAction Stop
 			    }
             
 			}
@@ -854,9 +833,9 @@ function Remove-MachineFromSCCMCollection
 	                    Write-Verbose -Message "Remove-MachineFromSCCMCollection: Query Validation Succeeded"
 	                    try 
 			            {
-			                $collection.DeleteMembershipRule($query) | Out-Null
+			                $Null = $collection.DeleteMembershipRule($query)
 			                Write-Verbose "Remove-MachineFromSCCMCollection: Invoked Method DeleteMembershipRule on the Collection"
-			                $collection.RequestRefresh() | Out-Null
+			                $Null = $collection.RequestRefresh()
 			                Write-Verbose "Remove-MachineFromSCCMCollection: Invoked Method RequestRefresh on the Collection"
 			            }
 			            catch
@@ -889,17 +868,17 @@ function Remove-MachineFromSCCMCollection
 			        #means the collection is ready for the update
 			        try 
 			        {
-			            $collection.AddmembershipRule($query) | Out-Null
+			            $Null = $collection.AddmembershipRule($query)
 			            Write-Verbose "Invoked Method AddMembershipRule on the Collection"
-			            $collection.RequestRefresh() | Out-Null
+			            $Null = $collection.RequestRefresh()
 			            Write-Verbose "Invoked Method RequestRefresh on the Collection"
 								
 						
 			        }
 			        catch
 			        {
-			            Write-Error "Remove-MachineFromSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
-			            throw "Remove-MachineFromSCCMCollection: Couldn't add the QueryRule in the Collection"
+			            Write-Warning "Remove-MachineFromSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
+			            Write-Error -Exception $_.Exception -ErrorAction Stop
 			        }
 			    }
 			             
@@ -916,8 +895,159 @@ function Remove-MachineFromSCCMCollection
 		    Write-Verbose "Remove-MachineFromSCCMCollection: Ending the function"
 	}
 	}
+
+
 #endregion Remove-MachineNamefromSCCMCollection
 
+
+#region Invoke-CollectionQueryRuleIntegrityCheck
+function Invoke-CollectionQueryRuleIntegrityCheck
+{
+	[CmdletBinding()]
+	[OutputType([PSObject])]
+	Param
+	(
+        # Specify the Path for PSDeploy.csv [Default - Looks in User's Desktop ]
+		[Parameter(ValueFromPipeline=$true,
+		            ValueFromPipelineByPropertyName=$true
+		            )]
+		[String]
+		$PSDeployCSVPath="$([System.Environment]::GetFolderPath('Desktop'))\PS_Deploy.csv",
+
+        # Specify the no of Collections to perform Integrity Check on [last modified - Default is 3]
+		[Parameter()]
+        [validatenotnullorempty()]
+		[int]$Count=3        
+		
+		
+	)
+	#Set-StrictMode -Version 2
+	BEGIN
+	{
+		Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Starting the Function "
+        if (Test-Path -Path $PSDeployCSVPath -PathType Leaf)
+        {
+            Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - $PSDeployCSVPath File Found"
+        }
+        else
+        {
+            Write-Error -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - $PSDeployCSVPath File not found." -ErrorAction Stop
+            
+        }
+
+    }
+    PROCESS
+    {
+        $Groups = Import-Csv -Path $PSDeployCSVPath | Select-Object -Last $Count | Group-Object -Property CollectionId
+        $Collections = @()
+        $Collections += $Groups | where Count -eq 1 | Select-Object -ExpandProperty Group
+        $Collections += $Groups | where Count -gt 1 | ForEach-Object -Process { $_.Group | Select-Object -Last 1}
+         Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Integrity Check will be performed on last $Count Collections in the $PSDeployCSVPath"
+         
+         foreach ($collection in $Collections)
+         {
+            $CMCollection = Get-WmiObject -Class SMS_Collection -Filter "CollectionID='$($collection.collectionid)'" @Script:WMIHash
+            $CMCollection.Get() #Invoke Get Method to get the Lazy Properties back
+
+		    #get the Collection Rules in an array 
+		    $QueryRules = @($CMCollection.CollectionRules)
+            $AutomatedQueryRule = @($QueryRules | Where-Object -FilterScript  {($_.RuleName -eq $($collection.QueryName))})
+
+            If ($AutomatedQueryRule.Count -gt 1)
+            {
+                #There might be multiple Automated QueryRules in the Collection. So at that point delete all of them and start over by creatiing just one from the PS_Deploy.csv
+                Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Found $($AutomatedQueryRule.Count) Automated QueryRules. Deleting Everything and creating new one from PS_deploy.csv "
+                $AutomatedQueryRule | ForEach-Object -Process { $null = $CMCollection.deleteMembershipRule($_)  }
+                Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Deleted multiple instances of the $($collection.QueryName)"
+                $AutomatedQueryRule = $null #set it to Null so that below code takes care of creating one
+            }
+           
+            
+
+            if ($AutomatedQueryRule)
+            {
+                
+                #Found a matching rule on the collection...compare the Query Expression
+                Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Found the matching Query Rule in the Collection"
+                if ($AutomatedQueryRule.QueryExpression -eq $collection.QueryExpression)
+                {
+                    #QueryExpression matches..Integrity Checked
+                    Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Integrity Check succeeded"
+                }
+                else
+                {
+                    #QueryExpression didn't match..Delete the old one and create new one
+                    Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Integrity Check Failed . QueryExpressions not matching. Creating new QueryRule"
+                    TRY
+                    {
+                        if ((Invoke-WmiMethod -Class SMS_CollectionRuleQuery -Name ValidateQuery -ArgumentList $Collection.QueryExpression @Script:WMIHash).returnvalue )
+                        {
+                            $AutomatedQueryRule | ForEach-Object -Process {$null = $CMCollection.DeleteMembershipRule($_) } #We wrapped it as an array
+                            Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Deleted instance of the $($collection.QueryName) with mismatching QueryExpression"
+                            $QueryRuleClass = Get-WmiObject -Class SMS_CollectionRuleQuery -List @Script:WMIHash #Returns back the class Object
+                            $TempQueryRule = $QueryRuleClass.createinstance()
+                            $TempQueryRule.QueryExpression = $Collection.QueryExpression
+                            $TempQueryRule.RuleName = 'Automated_QueryRule'
+                
+                            $null = $CMCollection.AddMembershipRule($TempQueryRule) 
+                            Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Added new Automated_QueryRule derived from PS_Deploy.csv"
+                        }
+                        else
+                        {
+                            Write-Error -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - the AutomatedQueryRule was found but the QueryExpression is not valid. Resolve Manually."
+                        }
+                    }
+                    CATCH
+                    {
+                        Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Something went wrong while deleting and then adding the QueryRule for $($Collection.Collection)"
+                        Write-Error -Exception $_.exception -ErrorAction Stop
+                    }
+
+                }
+                
+            }
+            else
+            {
+                
+                #Matching Query Rule not found create one
+                Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Didn't Found the matching Query Rule in the Collection"
+                
+                TRY
+                {
+                    #Validate the QueryExpression before saving it
+                    if ((Invoke-WmiMethod -Class SMS_CollectionRuleQuery -Name ValidateQuery -ArgumentList $Collection.QueryExpression @Script:WMIHash).returnvalue )
+                    {
+                        $QueryRuleClass = Get-WmiObject -Class SMS_CollectionRuleQuery -List @Script:WMIHash #Returns back the class Object
+                        $TempQueryRule = $QueryRuleClass.createinstance()
+                        $TempQueryRule.QueryExpression = $Collection.QueryExpression
+                        $TempQueryRule.RuleName = 'Automated_QueryRule'
+                
+                        $Null = $CMCollection.AddMembershipRule($TempQueryRule) 
+                        Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Added new Automated_QueryRule derived from PS_Deploy.csv"
+                    }
+                    else
+                    {
+                        Write-Error -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - QueryExpression in POSHDeploy.csv is not valid for $($Collection.collection)" -ErrorAction Stop
+                    }
+
+                    Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Added the Rule. Logging this to POSH_Deploy.csv now"
+                }
+                CATCH
+                {
+                    Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Something went wrong while adding the QueryRule for $($Collection.Collection)"
+                    Write-Error -Exception $_.exception -ErrorAction Stop
+                }
+            }
+        
+    }
+    
+}
+END
+    {
+
+    }
+}
+#endregion 
 #endregion Function definitions
 
 
@@ -930,13 +1060,13 @@ function Remove-MachineFromSCCMCollection
 $buttonaction.Add_Click({
         $Window.IsEnabled = $false 
 		$buttonAction.IsEnabled = $false 
-		
+		$Window.cursor = [System.Windows.Input.Cursors]::Wait
 		#Check to ensure that the applications are selected
 		
         $textBoxlog.clear() #clear the Log box
 		if ( ! $script:apps  )
 		{
-			[System.Windows.Forms.MessageBox]::Show("Choose an application to perform action on" , "Warning") | Out-Null
+			$Null = [System.Windows.Forms.MessageBox]::Show("Choose an application to perform action on" , "Warning") 
 		}
 		else
         {
@@ -952,7 +1082,7 @@ $buttonaction.Add_Click({
                 try
                     {
                                        
-                        [system.net.dns]::Resolve("$($script:ComputerName[$i])") | Out-Null
+                        $Null = [system.net.dns]::Resolve("$($script:ComputerName[$i])") 
 						if (Test-Connection -ComputerName $($script:ComputerName[$i]) -Count 2 -Quiet)
 						{
 							#$OS = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $($script:ComputerName[$i])
@@ -969,7 +1099,7 @@ $buttonaction.Add_Click({
                 catch 
                     { 
                         # $null = something will suppress the Red exception that is thrown..remove it and see what happens
-                        #[System.Windows.Forms.MessageBox]::Show("Machine name $($script:ComputerName[$i]) is wrong (not resolving)..skipping it" , "Warning") | Out-Null
+                        
                         Write-Verbose "Ignore the error as the incorrect machine name is being removed from the Input"
                         if ($script:ComputerName[$i] )
 						{
@@ -1028,7 +1158,7 @@ $buttonaction.Add_Click({
 				            {
 					            Write-Warning "$_ doesn't seem to have Client Installed on it...Raise a ticket to install it"
 					            
-					            [System.Windows.Forms.MessageBox]::Show("The SCCM Client on the machine $_ is not installed or active..Raise a ticket to install it" , "Warning") | Out-Null
+					            $Null = [System.Windows.Forms.MessageBox]::Show("The SCCM Client on the machine $_ is not installed or active..Raise a ticket to install it" , "Warning")
 					            
 				            }							            
 	                    	
@@ -1051,13 +1181,14 @@ $buttonaction.Add_Click({
 		    
             else
 		    {
-			    [System.Windows.Forms.MessageBox]::Show("Choose an action first" , "Warning") | Out-Null	
+			    $Null = [System.Windows.Forms.MessageBox]::Show("Choose an action first" , "Warning") 
 			
 		    }	
 	
 	} #end else
 		    $Window.IsEnabled = $true  
 			$buttonAction.IsEnabled = $true
+            $Window.cursor = [System.Windows.Input.Cursors]::Arrow
             Write-Host -ForegroundColor 'Red' "########################----POSH Deploy----######################## "	
             Write-Host -ForegroundColor 'Cyan'  "Welcome to the SCCM deployment tool.!!!"
             Write-Host -ForegroundColor 'Cyan' "Designed and Created by @DexterPOSH"		
@@ -1132,13 +1263,13 @@ $dataGridSelectedApps.Add_MouseDoubleClick({
 $checkBoxPSWindow.Add_Checked({Show-Console})
 $checkBoxPSWindow.Add_UnChecked({Hide-Console})
 
-#checkbox
+#checkboxCred
 $checkBoxCred.Add_Checked({$script:cred= Get-Credential -Message "Enter the Credential for the User with Access to the SMS Namespace "})
 $checkBoxCred.Add_UnChecked({Remove-Variable -Name cred -Scope Script})
 
 #test the SMS Connection, create a CIM hash
 $buttonTestSMSConnection.add_click({
-    
+    $Window.cursor = [System.Windows.Input.Cursors]::Wait
     $hash = @{"SCCMServer"=$($textBoxServer.text)}
     if (($checkBoxCred.IsChecked) -and ($Script:Cred))
     {
@@ -1169,6 +1300,7 @@ $buttonTestSMSConnection.add_click({
         $textBoxServer.Background = "#FFFF8686"
         throw "Can't connect to the SCCM server"
     }
+    $Window.cursor = [System.Windows.Input.Cursors]::Arrow
 })
 
 #Sync the App list
@@ -1191,6 +1323,12 @@ $buttonSyncApps.add_click({
     }
 })
 
+$buttonIntegrity.add_click({ 
+    $Window.cursor = [System.Windows.Input.Cursors]::Wait
+    Invoke-CollectionQueryRuleIntegrityCheck 
+     $Window.cursor = [System.Windows.Input.Cursors]::Arrow
+
+})
 
 #Make the grid searchable
 $textBoxSearch.add_TextChanged({$filter = $textBoxSearch.text; $view.Refresh()})
@@ -1227,4 +1365,4 @@ $DexLabel.Add_MouseLeave({
 #endregion Events
 
 #Start
-$Window.ShowDialog() | Out-Null
+$Null = $Window.ShowDialog() 
