@@ -1,8 +1,13 @@
-﻿#http://stackoverflow.com/questions/21935398/powershell-observablecollection-predicate-filter
+﻿
 #requires -version 3.0
 #requires -runasadministrator
 Set-StrictMode -Version latest
 $VerbosePreference = 'continue' #setting this as all the verbose messages are displayed on the background console window (hidden by default)
+
+<#
+Credits - Below links have been very helpful
+http://stackoverflow.com/questions/21935398/powershell-observablecollection-predicate-filter
+#>
 
 #region XAML definition
 [xml]$xaml = @"
@@ -31,14 +36,14 @@ $VerbosePreference = 'continue' #setting this as all the verbose messages are di
         <TextBox Height="28" HorizontalAlignment="Left" Margin="253,116,0,0" Name="textBoxSearch" VerticalAlignment="Top" Width="150" />
         <Label Content="Search Collections" Height="38" HorizontalAlignment="Left" Margin="136,116,0,0" Name="labelSearch" VerticalAlignment="Top" Width="111" />
         <Button Content="Copy" Height="30" HorizontalAlignment="Left" Margin="941,319,0,0" Name="buttonCopy" VerticalAlignment="Top" Width="71" ToolTip="Copies the App names in the clipboard" />
-        <Button Content="Sync Collections List" Height="25" HorizontalAlignment="Left" Margin="34,676,0,0" Name="buttonSyncApps" VerticalAlignment="Top" Width="118" ToolTip="Will fetch all the collections on the SMS Server " />
+        <Button Content="Sync Collections List" Height="25" HorizontalAlignment="Left" Margin="34,676,0,0" Name="buttonSyncApps" IsEnabled = "false" VerticalAlignment="Top" Width="118" ToolTip="Will fetch all the collections on the SMS Server " />
         <Button Content="Clear" Height="30" HorizontalAlignment="Left" Margin="1029,319,0,0" Name="buttonClear" VerticalAlignment="Top" Width="75" ToolTip="Clears the selected app list" />
         <CheckBox Content=" Alternate Creds" Height="27" HorizontalAlignment="Left" Margin="1003,34,0,0" Name="checkBoxCred" VerticalAlignment="Top" Width="101" />
         <Button Content="Browse" Height="23" HorizontalAlignment="Left" Margin="630,124,0,0" Name="buttonBrowse" VerticalAlignment="Top" Width="72" ToolTip="Browse for file with Machine Names" />
         <Label Content="Created by DexterPOSH" Height="31" HorizontalAlignment="Left" Margin="1089,676,0,0" Name="labelName" VerticalAlignment="Top" Width="164" FontSize="14" Foreground="Red"></Label>
         <Image Height="36" HorizontalAlignment="Left" Margin="1044,673,0,0" Name="image1" Stretch="Fill" VerticalAlignment="Top" Width="37" />
-        <TextBox Height="199" HorizontalAlignment="Left" Margin="803,112,0,0" Name="textBoxlog" VerticalAlignment="Top" Width="433" Background="#FFD1F8A9" />
-        <Button Content="Collection Integrity Check" Height="25" HorizontalAlignment="Left" Margin="186,676,0,0" Name="buttonIntegrity" VerticalAlignment="Top" Width="166" ToolTip="Does a check on the last 3 collections in PS_deploy.csv"/>
+        <Button Content="Collection Integrity Check" Height="25" HorizontalAlignment="Left" Margin="186,676,0,0" Name="buttonIntegrity" IsEnabled = "false" VerticalAlignment="Top" Width="166" ToolTip="Does a check on the last 3 collections in PS_deploy.csv"/>
+        <ListBox Height="208" HorizontalAlignment="Left" Margin="800,105,0,0" Name="listBoxLog" VerticalAlignment="Top" Width="427" />
     </Grid>
 </Window>
 
@@ -57,12 +62,11 @@ Write-Host -ForegroundColor 'Cyan'  "Welcome to the ConfigMgr (SCCM) deployment 
 Write-Host -ForegroundColor 'Cyan' "Designed and Created by Deepak Singh Dhami (@DexterPOSH)"
 $host.UI.RawUI.WindowTitle = "POSH Deploy by DexterPOSH"
 
+ 
+$PSdeployfile = "$([System.Environment]::GetFolderPath('MyDocuments'))\PS_Deploy.csv"
 
 
-$PSdeployfile = "$([System.Environment]::GetFolderPath('Desktop'))\PS_Deploy.csv"
-$PSAuditFile = "$([System.Environment]::GetFolderPath('Desktop'))\PS_Audit.csv"
-
-#As part of the recovery plan the Tool will log all the deployments to a file PS_Deploy.csv (in User Desktop) until the size of it grows older than 10MB
+#As part of the recovery plan the Tool will log all the deployments to a file PS_Deploy.csv (in User MyDocuments) until the size of it grows older than 10MB
 if (Test-Path -Path $PSDeployFile -Type leaf )
 {
 		
@@ -75,12 +79,15 @@ if (Test-Path -Path $PSDeployFile -Type leaf )
 	{
 		Write-Verbose -message "[POSH Deploy] Size of PS_Deploy.csv is below 5 MB...continuing"
 	}
+    
 }
 else
 {
-	Write-Verbose -Message "[POSH Deploy] PS_Deploy.csv not found....creating one in $([System.Environment]::GetFolderPath('Desktop'))"
+	Write-Verbose -Message "[POSH Deploy] PS_Deploy.csv not found....creating one in $([System.Environment]::GetFolderPath('MyDocuments'))"
     New-Item -Path $PSDeployFile -ItemType file -Verbose
+    
 }
+
 
 
 #endregion
@@ -102,7 +109,7 @@ $buttonCopy = $Window.FindName('buttonCopy')
 $buttonSyncApps = $Window.FindName('buttonSyncApps')
 $checkBoxCred = $Window.FindName('checkBoxCred')
 $DexLabel = $Window.FindName('labelName')
-$textBoxlog = $Window.findName('textBoxlog')
+$ListBoxLog = $Window.findName('listBoxLog')
 $buttonIntegrity=$Window.FindName('buttonIntegrity')
 #endregion Connect to Control
 
@@ -127,8 +134,15 @@ $filter = ''
 $view.Filter = {param($item) $item -match $filter}
 $view.Refresh()
 
+$LogCollection = New-Object System.Collections.ObjectModel.ObservableCollection[String] 
+$LogView = [System.Windows.Data.CollectionViewSource]::GetDefaultView($LogCollection)
+$ListBoxLog.ItemsSource = $LogView
+
+$LogCollection.Add("Welcome to POSH-Deploy, Enter your SCCM Server name & Hit Test Connection to begin")
+
 $dataGridApps.ItemsSource = $view
 $buttonaction.IsEnabled = $false #This will be disabled at start unless the Test SMS Connection is successful
+
 
 #endregion customize the GUI
 
@@ -181,7 +195,7 @@ Function Invoke-SCCMServiceCheck
                 BEGIN
                 {
                     Write-Verbose -Message "[Invoke-SCCMServiceCheck][Set-RemoteService] - Starting the Function."      
-                    $ErrorActionPreference = 'stop'               
+                              
                 }
 		        PROCESS 
 		        {
@@ -266,7 +280,7 @@ Function Invoke-SCCMServiceCheck
             END
             {
                 Write-Verbose -Message "[Invoke-SCCMServiceCheck][Set-RemoteService] - Ending the Function"
-                 $ErrorActionPreference = 'Continue' #Setting it back, Just in case someone is running this from ISE
+                 
             }
 
         } 
@@ -334,6 +348,7 @@ param(
                     #$SMSCli = [wmiclass]"\\$computer\root\ccm:sms_client"
 				    $SMSCli.TriggerSchedule('{00000000-0000-0000-0000-000000000021}') | Out-Null
 				    Write-Verbose " Invoke-MachinePolicyRefresh: $computer --> Machine Policy refreshed"
+                    
 			    }
 			    catch
 			    {
@@ -401,8 +416,8 @@ Function Connect-SCCMServer {
             }
             catch
             {
-                Write-Warning "[Connect-SCCMServer] Something went wrong"
-                throw $_.Exception
+               # Write-Warning "[Connect-SCCMServer] Something went wrong"
+                $LogCollection.Add("Something went wrong while connecting to SMS Provider. Try again")
             }
 
             Write-Verbose -Message "[Connect-SCCMServer] Ending the Function"
@@ -410,20 +425,6 @@ Function Connect-SCCMServer {
 }
 
 
-Function Out-TextBoxLog
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory,ValueFromPipeline)]
-        [ValidateNotNullOrEmpty()]
-        [string[]]$text,
-
-        [Parameter()]
-        [string]$Colour="#FFD1F8A9"
-        )
-    $textBoxlog.Text = "$text" + [System.Environment]::NewLine
-    $textBoxlog.Background = $Colour
-}
 #endregion 
 		
 		
@@ -526,7 +527,7 @@ function Add-MachineToSCCMCollection
 		catch 
 		    {
 		        Write-Warning -Message "Add-MachineToSCCMCollection: Something went wrong while querying the Collection and the Collection Rules on it"
-                Throw $_.exception 
+                $LogCollection.Add("Add-MachineToSCCMCollection: $_.exception")
 		    }
 				
 		
@@ -582,7 +583,7 @@ function Add-MachineToSCCMCollection
         }
         else
         {
-            Write-Error -Message "Add-MachineToSCCMCollection: The QueryExpression created is not valid" -ErrorAction Stop
+            $LogCollection.add("Add-MachineToSCCMCollection: The QueryExpression created is not valid" )
         }
 		
 		if ($($Automated_QueryRule.queryExpression).length -lt $tempQueryExpression.length)
@@ -612,7 +613,7 @@ function Add-MachineToSCCMCollection
             catch
             {
                 #If the file is POSH_Deploy.csv is already opened then don't proceed
-                throw $_.Exception
+                $LogCollection.Add("Add-MachineToSCCMCollection: $_.Exception")
             }
 	        #endregion log the changes
 
@@ -632,7 +633,7 @@ function Add-MachineToSCCMCollection
 			{
 			    #means the collection is ready for the update
                 
-	            Write-Host -ForegroundColor Green "Add-MachineToSCCMCollection: The Automated_QueryRule's QueryExpression is validated....Saving it now"
+	            Write-Verbose -Message "Add-MachineToSCCMCollection: The Automated_QueryRule's QueryExpression is validated....Saving it now"
 	            try 
 			    {
                     # deleting the QueryRule.
@@ -644,7 +645,7 @@ function Add-MachineToSCCMCollection
 			    catch
 			    {
 			        Write-Error "Couldn't invoke method DeleteMembershipRule on the Collection with ID $collectionid"
-			        throw $_.exception
+			        $LogCollection.Add("Add-MachineToSCCMCollection: $_.exception")
 			    }
 	            
 		
@@ -675,7 +676,7 @@ function Add-MachineToSCCMCollection
 			    catch
 			    {
 			        Write-Warning "Add-MachineToSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
-			        Write-Error -Exception $_.exception -ErrorAction Stop
+			        $LogCollection.Add("Add-MachineToSCCMCollection: $_.exception ")
 			    }
             
 			}
@@ -753,7 +754,7 @@ function Remove-MachineFromSCCMCollection
 		catch 
 		    {
 		        Write-Warning -Message "Remove-MachineFromSCCMCollection: Something went wrong while querying the Collection and the Collection Rules on it"
-                Throw $_.exception		    
+                $LogCollection.Add("Remove-MachineFromSCCMCollection: $_.exception ")
 		    }
 					
 		Foreach ($query in $QueryRules)
@@ -810,7 +811,7 @@ function Remove-MachineFromSCCMCollection
 	            }
                 catch
                 {
-                    throw $_.exception 
+                    $LogCollection.Add("Remove-MachineFromSCCMCollection: $_.exception")
                 }
 	            #endregion log the changes
 	            
@@ -841,13 +842,13 @@ function Remove-MachineFromSCCMCollection
 			            catch
 			            {
 			                Write-Error "Remove-MachineFromSCCMCollection: Couldn't invoke method DeleteMembershipRule on the Collection with ID $collectionid"
-			                throw "Remove-MachineFromSCCMCollection: Couldn't delete the QueryRule in the Collection"
+			                $LogCollection.Add("Remove-MachineFromSCCMCollection: Couldn't delete the QueryRule in the Collection")
 			            }
 	                }
 	                else
 	                {
-	                    Write-Host -ForegroundColor Red "Remove-MachineFromSCCMCollection: Query you created is incorrect."
-	                    throw "Remove-MachineFromSCCMCollection: QueryExpression couldn't be validated. Invalid WQL Syntax"
+	                    Write-Verbose -Message "Remove-MachineFromSCCMCollection: Query you created is incorrect."
+	                    $LogCollection.Add("QueryExpression couldn't be validated. Invalid WQL Syntax")
 	
 		            }
 			    }
@@ -878,7 +879,7 @@ function Remove-MachineFromSCCMCollection
 			        catch
 			        {
 			            Write-Warning "Remove-MachineFromSCCMCollection: Couldn't invoke method AddMembershipRule on the Collection with ID $collectionid"
-			            Write-Error -Exception $_.Exception -ErrorAction Stop
+			            $LogCollection.Add("Remove-MachineFromSCCMCollection: $_.exception")
 			        }
 			    }
 			             
@@ -907,12 +908,12 @@ function Invoke-CollectionQueryRuleIntegrityCheck
 	[OutputType([PSObject])]
 	Param
 	(
-        # Specify the Path for PSDeploy.csv [Default - Looks in User's Desktop ]
+        # Specify the Path for PSDeploy.csv [Default - Looks in User's MyDocuments ]
 		[Parameter(ValueFromPipeline=$true,
 		            ValueFromPipelineByPropertyName=$true
 		            )]
 		[String]
-		$PSDeployCSVPath="$([System.Environment]::GetFolderPath('Desktop'))\PS_Deploy.csv",
+		$PSDeployCSVPath="$([System.Environment]::GetFolderPath('MyDocuments'))\PS_Deploy.csv",
 
         # Specify the no of Collections to perform Integrity Check on [last modified - Default is 3]
 		[Parameter()]
@@ -931,7 +932,7 @@ function Invoke-CollectionQueryRuleIntegrityCheck
         }
         else
         {
-            Write-Error -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - $PSDeployCSVPath File not found." -ErrorAction Stop
+            $LogCollection.add("[Invoke-CollectionQueryRuleIntegrityCheck] - $PSDeployCSVPath File not found.")
             
         }
 
@@ -1000,7 +1001,7 @@ function Invoke-CollectionQueryRuleIntegrityCheck
                     CATCH
                     {
                         Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Something went wrong while deleting and then adding the QueryRule for $($Collection.Collection)"
-                        Write-Error -Exception $_.exception -ErrorAction Stop
+                        $LogCollection.Add("[Invoke-CollectionQueryRuleIntegrityCheck]  $_.exception")
                     }
 
                 }
@@ -1027,7 +1028,7 @@ function Invoke-CollectionQueryRuleIntegrityCheck
                     }
                     else
                     {
-                        Write-Error -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - QueryExpression in POSHDeploy.csv is not valid for $($Collection.collection)" -ErrorAction Stop
+                       $LogCollection.Add("[Invoke-CollectionQueryRuleIntegrityCheck] - QueryExpression in POSHDeploy.csv is not valid for $($Collection.collection)")
                     }
 
                     Write-Verbose -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Added the Rule. Logging this to POSH_Deploy.csv now"
@@ -1035,7 +1036,7 @@ function Invoke-CollectionQueryRuleIntegrityCheck
                 CATCH
                 {
                     Write-Warning -Message "[Invoke-CollectionQueryRuleIntegrityCheck] - Something went wrong while adding the QueryRule for $($Collection.Collection)"
-                    Write-Error -Exception $_.exception -ErrorAction Stop
+                    $LogCollection.Add("[Invoke-CollectionQueryRuleIntegrityCheck]: $_.exception")
                 }
             }
         
@@ -1058,15 +1059,16 @@ END
 
 #On click, change window background color
 $buttonaction.Add_Click({
-        $Window.IsEnabled = $false 
+        #$Window.IsEnabled = $false 
 		$buttonAction.IsEnabled = $false 
-		$Window.cursor = [System.Windows.Input.Cursors]::Wait
+        $Window.cursor = [System.Windows.Input.Cursors]::Wait
 		#Check to ensure that the applications are selected
 		
-        $textBoxlog.clear() #clear the Log box
+        
 		if ( ! $script:apps  )
 		{
-			$Null = [System.Windows.Forms.MessageBox]::Show("Choose an application to perform action on" , "Warning") 
+			#$Null = [System.Windows.Forms.MessageBox]::Show("Choose an application to perform action on" , "Warning") 
+            $LogCollection.Add("Please select a collection to work with")
 		}
 		else
         {
@@ -1086,14 +1088,14 @@ $buttonaction.Add_Click({
 						if (Test-Connection -ComputerName $($script:ComputerName[$i]) -Count 2 -Quiet)
 						{
 							#$OS = Get-WmiObject -Class Win32_OperatingSystem -ComputerName $($script:ComputerName[$i])
-							Write-Host -ForegroundColor 'Green' "[POSH Deploy] $($script:ComputerName[$i]) is online " #; OSInfo : $($OS.Caption) $($OS.OSArchitecture)"
-							Out-TextBoxLog -text "$($script:ComputerName[$i])--> Online `n" 
+							Write-Verbose -Message "[POSH Deploy] $($script:ComputerName[$i]) is online " #; OSInfo : $($OS.Caption) $($OS.OSArchitecture)"
+							$LogCollection.Add("$($script:ComputerName[$i])--> Online ")
                             
 						}
 						else
 						{	
-                            write-host -ForegroundColor Red "$($script:ComputerName[$i]) is offline "
-							Out-TextBoxLog -text "$($script:ComputerName[$i]) --> Offline `n"
+                            Write-Verbose  "[POSH Deploy] $($script:ComputerName[$i]) is offline "
+							$LogCollection.Add("$($script:ComputerName[$i]) --> Offline")
 						}
                     } 
                 catch 
@@ -1103,7 +1105,7 @@ $buttonaction.Add_Click({
                         Write-Verbose "Ignore the error as the incorrect machine name is being removed from the Input"
                         if ($script:ComputerName[$i] )
 						{
-							$TextBoxLog.Text += "$($script:ComputerName[$i]) --> Wrong Machine " + [System.Environment]::NewLine
+							$LogCollection.Add("$($script:ComputerName[$i]) --> Wrong Machine (Will be removed from Input)")
 						}
 						#$textboxInfo.ForeColor = 'Red'
 						$null = $script:ComputerName.Remove("$($script:ComputerName[$i])")  
@@ -1112,19 +1114,20 @@ $buttonaction.Add_Click({
             
             }
             #show the final list of resolvable machine names in the domain. The query shouldn't get a machine name which can't be resolved.
-             Out-TextBoxLog -Text "Final list of resolvable machine names -- $script:ComputerName `n" 
+             $LogCollection.Add("Final list of resolvable machine names --> $script:ComputerName")
             
 		    #based on the checkbox selected perform the action
 		    if ($buttonAction.Content -eq "ADD")
 		    {
 			    #Call the Function to deploy the apps
-			                    
+			        $LogCollection.Add("Starting the ADD action on the selected collections")          
             	    $script:apps | 
                                 ForEach-Object -Process {
-                                   
+                                            $LogCollection.Add("Starting Function Add-MachineToSCCMCollection for Collection $($_.name)")
                                             Add-MachineToSCCMCollection -CollectionId $_.CollectionId -computername $script:ComputerName -CIMHash $Script:CIMHash
-                                    
+                                            $LogCollection.Add("Ended Function Add-MachineToSCCMCollection for Collection $($_.name)")
                                 }
+                    $LogCollection.Add("ADD action completed on selected collections")
 			     #region to check for the SCCM related Services are started and Machine Policy refresh
 			
 			    Write-Verbose -Message "Add-MachineToSCCMCollection: All the machines added..now doing post advertisement tasks"
@@ -1136,6 +1139,7 @@ $buttonaction.Add_Click({
 						    if (Test-Connection -ComputerName $_ -Count 2 -Quiet)
 						    {
 							    Write-Verbose "$_ --> is online doing Policy Refresh and Service Check"
+                                $LogCollection.Add("Trying to do Service Check & Policy refresh on the machine $_")
 							    Invoke-SCCMServiceCheck -ComputerName $_ -verbose
 							    Invoke-MachinePolicyRefresh -ComputerName $_ -verbose
 						    }
@@ -1157,8 +1161,8 @@ $buttonaction.Add_Click({
 				            else
 				            {
 					            Write-Warning "$_ doesn't seem to have Client Installed on it...Raise a ticket to install it"
+					            $LogCollection.Add("Warning : The SCCM Client on the machine $_ is not installed or active..Raise a ticket to install it")
 					            
-					            $Null = [System.Windows.Forms.MessageBox]::Show("The SCCM Client on the machine $_ is not installed or active..Raise a ticket to install it" , "Warning")
 					            
 				            }							            
 	                    	
@@ -1172,21 +1176,27 @@ $buttonaction.Add_Click({
 		    elseif ($buttonAction.Content -eq "REMOVE")
 		    {
 			    #Call the Function to remove the apps
-			    $script:apps | ForEach-Object -Process { Remove-MachineFromSCCMCollection -computername $script:ComputerName -CollectionId $_.CollectionId -CIMHash $Script:CIMhash }
+                $LogCollection.Add("Starting REMOVE action on selected applications")
+			    $script:apps | ForEach-Object -Process { 
+                                                    $LogCollection.Add("Starting Function Remove-MachineFromSCCMCollection for Collection $($_.name)")
+                                                    Remove-MachineFromSCCMCollection -computername $script:ComputerName -CollectionId $_.CollectionId -CIMHash $Script:CIMhash
+                                                    $LogCollection.Add("Ending Function Remove-MachineFromSCCMCollection for Collection $($_.name)") 
+                                                     }
 			
-			    $Window.IsEnabled = $true
+			    
 			    $buttonAction.IsEnabled = $true
                 
             }
 		    
             else
 		    {
-			    $Null = [System.Windows.Forms.MessageBox]::Show("Choose an action first" , "Warning") 
+			    $LogCollection.Add("Warning : Choose an Action First")
+                #$Null = [System.Windows.Forms.MessageBox]::Show("Choose an action first" , "Warning") 
 			
 		    }	
 	
 	} #end else
-		    $Window.IsEnabled = $true  
+		     
 			$buttonAction.IsEnabled = $true
             $Window.cursor = [System.Windows.Input.Cursors]::Arrow
             Write-Host -ForegroundColor 'Red' "########################----POSH Deploy----######################## "	
@@ -1264,13 +1274,15 @@ $checkBoxPSWindow.Add_Checked({Show-Console})
 $checkBoxPSWindow.Add_UnChecked({Hide-Console})
 
 #checkboxCred
-$checkBoxCred.Add_Checked({$script:cred= Get-Credential -Message "Enter the Credential for the User with Access to the SMS Namespace "})
+$checkBoxCred.Add_Checked({$script:cred= Get-Credential -Message "Enter the Credential for the User with Access to the SMS Namespace "; $LogCollection.Add("Credentials added for all the subsequent operations")})
 $checkBoxCred.Add_UnChecked({Remove-Variable -Name cred -Scope Script})
 
-#test the SMS Connection, create a CIM hash
+#region test the SMS Connection, create a CIM hash
 $buttonTestSMSConnection.add_click({
+    $LogCollection.Add("Trying to Connect to the SMS Namespace on the SCCM server")
     $Window.cursor = [System.Windows.Input.Cursors]::Wait
     $hash = @{"SCCMServer"=$($textBoxServer.text)}
+
     if (($checkBoxCred.IsChecked) -and ($Script:Cred))
     {
         $hash.add('Credential',$Script:Cred) #add the Credentials Object if the checkbox is checked
@@ -1285,28 +1297,30 @@ $buttonTestSMSConnection.add_click({
         if ( $checkBoxCred.IsChecked)
         {
             Write-Verbose -Message "[POSH Deploy] Setting the PSDefaultParameterValues for Get-WMIObject to use alternate Creds"
-            Out-TextBoxLog -text "Setting the PSDefaultParameterValues for Get-WMIObject to use alternate Creds"
+            $LogCollection.Add("Setting the PSDefaultParameterValues for Get-WMIObject to use alternate Creds")
             $Script:PSDefaultParameterValues = @{"Get-WMIObject:Credential"=$Script:Cred} #setting the Credentials for all the WMI Calls as CIM Session can't be used
         }
         
-        Out-TextBoxLog -text "Successfully Connected to the SMS Namespace on the server $($textBoxServer.text). CIM Hash created" 
+        $LogCollection.Add("Successfully Connected to the SMS Namespace on the server $($textBoxServer.text). CIM Hash created" )
         $buttonaction.IsEnabled = $true
         $textBoxServer.Background = "#FFD1F8A9"
+        $buttonSyncApps.IsEnabled = $true
+        $buttonIntegrity.IsEnabled = $true
     }
     else
     {
        
-        Out-TextBoxLog -text "Can't connect to the SMS Namespace on the server $($textBoxServer.text). `n Verify the Server has SMS NameSpace Provider installed or supply alternate credentials"  -colour "#FFFF8686"
-        $textBoxServer.Background = "#FFFF8686"
-        throw "Can't connect to the SCCM server"
+        $LogCollection.Add("Can't connect to the SMS Namespace on the server $($textBoxServer.text).`nVerify the Server has SMS NameSpace Provider installed or supply alternate credentials")
+                
     }
     $Window.cursor = [System.Windows.Input.Cursors]::Arrow
 })
 
+#endregion 
 #Sync the App list
 $buttonSyncApps.add_click({
-    if ($Script:CIMHash)
-    {
+   
+        $LogCollection.Add("Wait for few seconds..performing a sync & downloading the Collection List ")
         $query = 'SELECT Name , Comment, CollectionID FROM SMS_Collection WHERE Name NOT LIKE "All%" order by Name' #Filter out the Collections like "All Systems", "All*"
 
         $AllCollections = Get-CimInstance -Query $query @CIMhash
@@ -1315,17 +1329,16 @@ $buttonSyncApps.add_click({
             #MASTER.CSV has been updated ...time to reload the GridView 
         $collectionView.Clear()
         Import-Csv -Path C:\temp\MASTER.CSV| ForEach-Object -Process {$collectionView.Add($_)}
+        $LogCollection.Add("New Collections have been added..Note the collections matching pattern ALL* are dropped")
         $view.Refresh()
-    }
-    else
-    {
-        #pop up a dialog box to connect to SCCM Server
-    }
+    
 })
 
 $buttonIntegrity.add_click({ 
+    $LogCollection.Add("last 3 Collections in the PS_Deploy.csv will be checked/ Fixed for integrity")
     $Window.cursor = [System.Windows.Input.Cursors]::Wait
     Invoke-CollectionQueryRuleIntegrityCheck 
+    $LogCollection.Add("Integrity Check/ Fix done")
      $Window.cursor = [System.Windows.Input.Cursors]::Arrow
 
 })
