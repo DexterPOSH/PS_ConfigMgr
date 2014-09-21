@@ -530,7 +530,7 @@ function Add-MachineToSCCMCollection
 		If ($QueryRules) 
         {	
             # If already Query Rules exist..then look among them for "automated_queryrule"	
-		    If (!($Automated_QueryRule = $QueryRules | where {$_.RuleName -eq "Automated_QueryRule"} | Sort-Object -Property {$_.QueryExpression.Length} | Select-Object -First 1))
+		    If (!($Automated_QueryRule = $QueryRules | where { ($_.__Class -eq "SMS_CollectionRuleQuery")-and ($_.RuleName -eq "Automated_QueryRule")} | Sort-Object -Property {$_.QueryExpression.Length} | Select-Object -First 1))
 		    {
 							
 			   $Automated_QueryRule = & $createNewAutomatedQueryRule
@@ -741,7 +741,7 @@ function Remove-MachineFromSCCMCollection
 
 			    #create an empty array to hold QueryRules
 			    $QueryRules = @()
-                $QueryRules = $Collection.CollectionRules
+                $QueryRules = $Collection.CollectionRules | Where-Object -FilterScript {$_.__Class -eq "SMS_CollectionRuleQuery"} #Take only QueryMembershipRule
 		        
 		        Write-Verbose "Remove-MachineFromSCCMCollection: Queried the QueryRules on the Collection successfully"
             }
