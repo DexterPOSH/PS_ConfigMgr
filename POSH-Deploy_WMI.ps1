@@ -1,6 +1,5 @@
 ﻿
 #requires -version 3.0
-#requires -runasadministrator
 Set-StrictMode -Version latest
 $VerbosePreference = 'continue' #setting this as all the verbose messages are displayed on the background console window (hidden by default)
 
@@ -107,6 +106,7 @@ $buttonTestSMSConnection = $Window.FindName('buttonTestSMSConnection')
 $textBoxSearch = $Window.FindName('textBoxSearch')
 $buttonCopy = $Window.FindName('buttonCopy')
 $buttonSyncApps = $Window.FindName('buttonSyncApps')
+$buttonclear = $Window.FindName('buttonClear')
 $checkBoxCred = $Window.FindName('checkBoxCred')
 $DexLabel = $Window.FindName('labelName')
 $ListBoxLog = $Window.findName('listBoxLog')
@@ -377,7 +377,7 @@ Function Connect-SCCMServer {
     PROCESS {
 
            
-            Write-Verbose -Message "[Connect-SCCMServer] Trying to connect to  SCCM server iver WMI"
+            Write-Verbose -Message "[Connect-SCCMServer] Trying to connect to  SCCM server WMI"
             #region open a CIM session
             $Params = @{ComputerName = $SCCMServer;ErrorAction = 'Stop'}          
             if ($credential)
@@ -468,7 +468,7 @@ function Add-MachineToSCCMCollection
         #Specify the Collection ID
 		[Parameter()]
 		[validatenotnullorempty()]
-		[ValidatePattern('^[A-Za-z]{3}\w{5}$')]
+		#[ValidatePattern('^[A-Za-z]{3}\w{5}$')]
 		[string]
 		$CollectionId,
 
@@ -713,7 +713,7 @@ function Remove-MachineFromSCCMCollection
         #Specify the Collection ID
 		[Parameter()]
 		[validatenotnullorempty()]
-		[ValidatePattern('^[A-Za-z]{3}\w{5}$')]
+		#[ValidatePattern('^[A-Za-z]{3}\w{5}$')]
 		[string]
 		$CollectionId,
 
@@ -1250,8 +1250,10 @@ $checkBoxRemove.Add_UnChecked({
 #region Data Grid events
 
 $dataGridApps.Add_MouseDoubleClick({
+    if ( [System.String]::IsNullorEmpty($dataGridApps.CurrentItem)) { return}
     $script:apps += ($dataGridApps.CurrentItem); 
     $dataGridSelectedApps.ItemsSource = $script:apps
+    
 })
 
 
@@ -1260,6 +1262,14 @@ $dataGridSelectedApps.Add_MouseDoubleClick({
     $dataGridSelectedApps.ItemsSource = $script:apps
 })
 
+$buttonClear.add_click({
+    $script:apps = @()
+    $dataGridSelectedApps.ItemsSource = $script:apps
+})
+
+$buttonCopy.Add_click({
+    $script:apps | Select-Object -ExpandProperty Name | clip.exe
+})
 
 #endregion Data Grid Events
 
@@ -1320,6 +1330,7 @@ $buttonSyncApps.add_click({
     
 })
 
+#Do a Check for the Integrity
 $buttonIntegrity.add_click({ 
     $LogCollection.Add("last 3 Collections in the PS_Deploy.csv will be checked/ Fixed for integrity")
     $Window.cursor = [System.Windows.Input.Cursors]::Wait
