@@ -27,7 +27,6 @@ function Remove-SCCMDPContent
         # Specify the Package IDs which need to be removed from the DP
         [Parameter(Mandatory,
                    ValueFromPipelineByPropertyName,
-                   ValueFromPipeline,
                    Position=0)]
         [string[]]$PackageID,
 
@@ -63,7 +62,7 @@ function Remove-SCCMDPContent
         catch
         {
             Write-Warning "Something went wrong while getting the SMS ProviderLocation"
-            $Error[0].Exception
+            throw $_.Exception
         }
     }
     Process
@@ -82,7 +81,7 @@ function Remove-SCCMDPContent
             $Removepackages | ForEach-Object -Process { 
                 try 
                 {
-                    #Remove-WmiObject  -InputObject $_  -ErrorAction Stop -ErrorVariable WMIRemoveError 
+                    Remove-WmiObject  -InputObject $_  -ErrorAction Stop -ErrorVariable WMIRemoveError 
                     Write-Verbose -Message "Removed $($_.PackageID) from $DPname"
                     [pscustomobject]@{"DP"=$DPname;"PackageId"=$($_.PackageID);"Action"="Removed"}
                                                                  
@@ -90,7 +89,7 @@ function Remove-SCCMDPContent
                 catch
                 {
                     Write-Warning "[PROCESS] Something went wrong while removing the Package  from $DPname"
-                    $WMIRemoveError.Exception
+                    throw $_.exception
                 }
             }#End Foreach-Object
             
