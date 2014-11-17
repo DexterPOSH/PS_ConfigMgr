@@ -6,6 +6,9 @@ $VerbosePreference = 'continue' #setting this as all the verbose messages are di
 <#
     Credits - Below links have been very helpful
     http://stackoverflow.com/questions/21935398/powershell-observablecollection-predicate-filter
+
+    PowerShell MVP- Boe Prox's post on WPF
+    http://learn-powershell.net/tag/wpf/
 #>
 
 #region XAML definition
