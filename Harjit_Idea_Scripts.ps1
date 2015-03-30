@@ -1,4 +1,42 @@
-﻿function Get-ResourceCollectionMemberhip
+﻿$PSDefaultParameterValues =@{"get-cimclass:namespace"="Root\SMS\site_DEX";"get-cimclass:computername"="DexSCCM";"get-cimInstance:computername"="DexSCCM";"get-ciminstance:namespace"="Root\SMS\site_DEX";"get-wmiobject:namespace"="Root\SMS\site_DEX";"get-WMIObject:computername"="DexSCCM"}
+
+
+#region Script that can tell me which collection a particular system or several Systems belong to ?
+
+$name = 'DexChef'
+
+#$CIMinstance = Get-CimInstance -ClassName SMS_R_System -Filter "Name='$name'"
+$CIMinstance = Get-CimInstance -Query "Select ResourceID FROM SMS_R_System WHERE Name='$name'"
+
+$Allcollections = Get-CimInstance -Query "Select CollectionID,MemberClassName from SMS_Collection"
+foreach ($collection in $Allcollections)
+{
+
+    if (Get-CimInstance -Query "Select * FROM $($collection.MemberClassname) WHERE ResourceID='$($CIMinstance.ResourceID)'")
+    {
+        "It is in collection ($collection.name)"
+    }
+
+}
+
+<#
+
+$ResID = (Get-CMDevice -Name "CLTwin7").ResourceID
+
+   2: $Collections = (Get-WmiObject -Class sms_fullcollectionmembership -Namespace root\sms\site_HQ1 -Filter "ResourceID = '$($ResID)'").CollectionID
+
+   3: foreach ($Collection in $Collections)
+
+   4:     {
+
+   5:         Get-CMDeviceCollection -CollectionId $Collection | select Name, CollectionID
+
+   6:     }
+
+#>
+
+
+ function Get-ResourceCollectionMemberhip
  {
     <#
         .Synopsis
@@ -55,7 +93,7 @@
             Write-Verbose  -Message "Provider is located on $($sccmProvider.Machine) in namespace $($splits[3])"
  
             # Create a new hash to be passed on later
-            $hash = @{'ComputerName' = $ComputerName;'NameSpace' = $Splits[3];'ErrorAction' = 'Stop'}                      
+            $hash = @{'ComputerName' = $ComputerName;'ErrorAction' = 'Stop'}                      
                         
         }
         catch
@@ -74,12 +112,12 @@
                 "Device" {
                     try
                     {
-                        $ResourceID = Get-CimInstance -Query "Select ResourceID FROM SMS_CombineddeviceResources WHERE NAME='$Resourcename'"  @hash | Select-Object -ExpandProperty  ResourceID 
+                        $ResourceID = Get-CimInstance -Query "Select ResourceID FROM SMS_CombinedDeviceResources WHERE NAME='$Resourcename'"  @hash | Select-Object -ExpandProperty  ResourcedID 
                         $MemberofCollections = Get-CimInstance -Query "Select CollectionID FROM SMS_FullCollectionMembership WHERE ResourceID='$ResourceID'" -ErrorVariable ResourceQuery @hash
                         
                         foreach ($Collection in $MemberofCollections)
                         {
-                            $collectionInfo = Get-CimInstance -Query "Select Name FROM SMS_Collection WHERE CollectionID='$($Collection.CollectionID)'" @hash
+                            $collectionInfo = Get-CimInstance -Query "Select Name FROM SMS_Collection WHERE CollectionID='$($Collection.CollectionID)'"
                             [PSCustomobject]@{
                                 Name = $Resourcename;
                                 ResourceType = 'Device';
@@ -102,8 +140,27 @@
                 }
             }
      }
-     }
      End
      {
      }
  }
+
+#endregion
+
+#region script to list the Servers ad when they were last rebooted which would indicate when they recieved last patches 
+
+
+#endregion
+
+
+#region Script to select one or Several applications and publish them to DPs
+
+
+#endregion
+
+
+#region Script to deploy one or several Apps and deploy them to one collection or several
+
+
+
+#endregion

@@ -4,18 +4,36 @@ Set-StrictMode -Version latest
 $VerbosePreference = 'continue' #setting this as all the verbose messages are displayed on the background console window (hidden by default)
 
 <#
+    
+#>
+
+<#
+.Synopsis
+   POSH-Deploy to simplify Query Based Deployments in ConfigMgr 2012
+.DESCRIPTION
+   Long description
+.NOTES
     Credits - Below links have been very helpful
     http://stackoverflow.com/questions/21935398/powershell-observablecollection-predicate-filter
 
     PowerShell MVP- Boe Prox's post on WPF
     http://learn-powershell.net/tag/wpf/
+
+    Version Information
+    Version 1
+    + QueryBased Deployments for Device Collections.
+    + Bug Fixes - Credit to -
+
+    Version 1.1
+    + Supports QueryBased Deployments for User Collections too.
 #>
+
 
 #region XAML definition
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="POSH-Deploy v1 - by DexterPOSH" Height="748" Width="1272" ResizeMode="NoResize" Background="#FF5397B4">
+        Title="POSH-Deploy v1.1 - by DexterPOSH" Height="748" Width="1272" ResizeMode="NoResize" Background="#FF5397B4">
     <Grid Height="713" Width="1253" Background="#FF5397B4">
         <Label Content="Choose action[ Add/ Remove machines to collection]" Height="28" HorizontalAlignment="Left" Margin="10,10,0,0" Name="labelAction" VerticalAlignment="Top" Width="320" />
         <Label Content="Enter Machine Names (one per line)" Height="28" HorizontalAlignment="Left" Margin="421,10,0,0" Name="labelMachine" VerticalAlignment="Top" Width="222" />
@@ -54,10 +72,11 @@ $VerbosePreference = 'continue' #setting this as all the verbose messages are di
         <Label Content="Created by DexterPOSH" Height="31" HorizontalAlignment="Left" Margin="1089,676,0,0" Name="labelName" VerticalAlignment="Top" Width="164" FontSize="14" Foreground="Red"></Label>
         <Image Height="36" HorizontalAlignment="Left" Margin="1044,673,0,0" Name="image1" Stretch="Fill" VerticalAlignment="Top" Width="37" />
         <Button Content="Collection Integrity Check" Height="25" HorizontalAlignment="Left" Margin="186,676,0,0" Name="buttonIntegrity" VerticalAlignment="Top" Width="166" ToolTip="Does a check on the last 3 collections in PS_deploy.csv" IsEnabled="False" />
-        <ListBox Height="208" HorizontalAlignment="Left" Margin="800,105,0,0" Name="listBoxLog" VerticalAlignment="Top" Width="427" ItemsSource="{Binding}" />
         <Button Content="ClearLog" Height="24" HorizontalAlignment="Left" Margin="1139,80,0,0" Name="buttonClearLog" VerticalAlignment="Top" Width="88" />
+        <RichTextBox Height="197" HorizontalAlignment="Left" Margin="807,116,0,0" Name="richTextBox1" VerticalAlignment="Top" Width="433" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
     </Grid>
 </Window>
+
 
 "@
 Add-Type -AssemblyName PresentationFramework 
@@ -1717,3 +1736,84 @@ $DexLabel.Add_MouseLeave({
 
 #Start
 $null = $Window.ShowDialog() 
+
+# SIG # Begin signature block
+# MIIOfwYJKoZIhvcNAQcCoIIOcDCCDmwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU8djFgC+Pe56WjHWSa/zL8TGz
+# W7SgggvEMIIFGTCCBAGgAwIBAgIQC0japWK58eEmaEk9Yy13dzANBgkqhkiG9w0B
+# AQUFADBvMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYD
+# VQQLExB3d3cuZGlnaWNlcnQuY29tMS4wLAYDVQQDEyVEaWdpQ2VydCBBc3N1cmVk
+# IElEIENvZGUgU2lnbmluZyBDQS0xMB4XDTE0MTAyMzAwMDAwMFoXDTE1MTAyODEy
+# MDAwMFowbzELMAkGA1UEBhMCSU4xEjAQBgNVBAgTCUthcm5hdGFrYTESMBAGA1UE
+# BxMJQmFuZ2Fsb3JlMRswGQYDVQQKExJEZWVwYWsgU2luZ2ggRGhhbWkxGzAZBgNV
+# BAMTEkRlZXBhayBTaW5naCBEaGFtaTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+# AQoCggEBAKNLwYqd4Lu8CRmyuGGG8+1UIXBfkJmn0NrtUXtxM/3xLzu406RGNx2d
+# LnCmT0ESH1vGyqYOkusoVLt04KMxVStD1PZnCNnorI/TKM0OKAfcsUuIb5E9KJHK
+# e6Gm2RfL3F/N0Tbi1AcjrjKSs7fOTQREvlFcFq/DTOSqE/vLfFH2RP+h+BB73g0v
+# wMGNV7iSHbUtiMIqrWUFwpiHOhBii8vfE8nkg6jepo+TaleGpBaXpvcVv8tKZpAP
+# kMOpcepYdQE3rIocAGES5SA9jzwIZVXbHgmygt+30TQhCkSwbUJ7L/E6mJj2OfL3
+# 4StyY+gsn3HW9ygrxVV7hmw2gSZx3xkCAwEAAaOCAa8wggGrMB8GA1UdIwQYMBaA
+# FHtozimqwBe+SXrh5T/Wp/dFjzUyMB0GA1UdDgQWBBSCvErN9s7DnvsZs0HI+sXa
+# ZJ8l8zAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwMwbQYDVR0f
+# BGYwZDAwoC6gLIYqaHR0cDovL2NybDMuZGlnaWNlcnQuY29tL2Fzc3VyZWQtY3Mt
+# ZzEuY3JsMDCgLqAshipodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vYXNzdXJlZC1j
+# cy1nMS5jcmwwQgYDVR0gBDswOTA3BglghkgBhv1sAwEwKjAoBggrBgEFBQcCARYc
+# aHR0cHM6Ly93d3cuZGlnaWNlcnQuY29tL0NQUzCBggYIKwYBBQUHAQEEdjB0MCQG
+# CCsGAQUFBzABhhhodHRwOi8vb2NzcC5kaWdpY2VydC5jb20wTAYIKwYBBQUHMAKG
+# QGh0dHA6Ly9jYWNlcnRzLmRpZ2ljZXJ0LmNvbS9EaWdpQ2VydEFzc3VyZWRJRENv
+# ZGVTaWduaW5nQ0EtMS5jcnQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQUFAAOC
+# AQEAjrxX9wBnP9I7KGicJJfsry6zSTyrhCRH8k2iYJxqbGZnJ7taBAe1W9XbsSqs
+# xOd392fmChn435/hPzrJFl7GbXL5tE/OsJGUjtD02rfFx1W7lI5Wt76NY1QKL48C
+# gbUqAbFfbA+zwAAPGbK4t6OPYgqc8p/TRj+MOaAhM/LtQXmCfu1PcF4vtp5XOb1h
+# 8WqP5W12ZJvYFmlL7y5BNMyWlvFhkGNfzDoLJJU5kk36xaqJurb9znuCevkwpsn+
+# TSyHNC2dMZ6GIy5Lcn3P5H+6LYbkliqrUWWmPr+bETvWQT4jfk1Js3qiEORj405J
+# v8Btw626MErsX1fdj8pATOuFAjCCBqMwggWLoAMCAQICEA+oSQYV1wCgviF2/cXs
+# bb0wDQYJKoZIhvcNAQEFBQAwZTELMAkGA1UEBhMCVVMxFTATBgNVBAoTDERpZ2lD
+# ZXJ0IEluYzEZMBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTEkMCIGA1UEAxMbRGln
+# aUNlcnQgQXNzdXJlZCBJRCBSb290IENBMB4XDTExMDIxMTEyMDAwMFoXDTI2MDIx
+# MDEyMDAwMFowbzELMAkGA1UEBhMCVVMxFTATBgNVBAoTDERpZ2lDZXJ0IEluYzEZ
+# MBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTEuMCwGA1UEAxMlRGlnaUNlcnQgQXNz
+# dXJlZCBJRCBDb2RlIFNpZ25pbmcgQ0EtMTCCASIwDQYJKoZIhvcNAQEBBQADggEP
+# ADCCAQoCggEBAJx8+aCPCsqJS1OaPOwZIn8My/dIRNA/Im6aT/rO38bTJJH/qFKT
+# 53L48UaGlMWrF/R4f8t6vpAmHHxTL+WD57tqBSjMoBcRSxgg87e98tzLuIZARR9P
+# +TmY0zvrb2mkXAEusWbpprjcBt6ujWL+RCeCqQPD/uYmC5NJceU4bU7+gFxnd7XV
+# b2ZklGu7iElo2NH0fiHB5sUeyeCWuAmV+UuerswxvWpaQqfEBUd9YCvZoV29+1aT
+# 7xv8cvnfPjL93SosMkbaXmO80LjLTBA1/FBfrENEfP6ERFC0jCo9dAz0eotyS+BW
+# tRO2Y+k/Tkkj5wYW8CWrAfgoQebH1GQ7XasCAwEAAaOCA0MwggM/MA4GA1UdDwEB
+# /wQEAwIBhjATBgNVHSUEDDAKBggrBgEFBQcDAzCCAcMGA1UdIASCAbowggG2MIIB
+# sgYIYIZIAYb9bAMwggGkMDoGCCsGAQUFBwIBFi5odHRwOi8vd3d3LmRpZ2ljZXJ0
+# LmNvbS9zc2wtY3BzLXJlcG9zaXRvcnkuaHRtMIIBZAYIKwYBBQUHAgIwggFWHoIB
+# UgBBAG4AeQAgAHUAcwBlACAAbwBmACAAdABoAGkAcwAgAEMAZQByAHQAaQBmAGkA
+# YwBhAHQAZQAgAGMAbwBuAHMAdABpAHQAdQB0AGUAcwAgAGEAYwBjAGUAcAB0AGEA
+# bgBjAGUAIABvAGYAIAB0AGgAZQAgAEQAaQBnAGkAQwBlAHIAdAAgAEMAUAAvAEMA
+# UABTACAAYQBuAGQAIAB0AGgAZQAgAFIAZQBsAHkAaQBuAGcAIABQAGEAcgB0AHkA
+# IABBAGcAcgBlAGUAbQBlAG4AdAAgAHcAaABpAGMAaAAgAGwAaQBtAGkAdAAgAGwA
+# aQBhAGIAaQBsAGkAdAB5ACAAYQBuAGQAIABhAHIAZQAgAGkAbgBjAG8AcgBwAG8A
+# cgBhAHQAZQBkACAAaABlAHIAZQBpAG4AIABiAHkAIAByAGUAZgBlAHIAZQBuAGMA
+# ZQAuMBIGA1UdEwEB/wQIMAYBAf8CAQAweQYIKwYBBQUHAQEEbTBrMCQGCCsGAQUF
+# BzABhhhodHRwOi8vb2NzcC5kaWdpY2VydC5jb20wQwYIKwYBBQUHMAKGN2h0dHA6
+# Ly9jYWNlcnRzLmRpZ2ljZXJ0LmNvbS9EaWdpQ2VydEFzc3VyZWRJRFJvb3RDQS5j
+# cnQwgYEGA1UdHwR6MHgwOqA4oDaGNGh0dHA6Ly9jcmwzLmRpZ2ljZXJ0LmNvbS9E
+# aWdpQ2VydEFzc3VyZWRJRFJvb3RDQS5jcmwwOqA4oDaGNGh0dHA6Ly9jcmw0LmRp
+# Z2ljZXJ0LmNvbS9EaWdpQ2VydEFzc3VyZWRJRFJvb3RDQS5jcmwwHQYDVR0OBBYE
+# FHtozimqwBe+SXrh5T/Wp/dFjzUyMB8GA1UdIwQYMBaAFEXroq/0ksuCMS1Ri6en
+# IZ3zbcgPMA0GCSqGSIb3DQEBBQUAA4IBAQB7ch1k/4jIOsG36eepxIe725SS15BZ
+# M/orh96oW4AlPxOPm4MbfEPE5ozfOT7DFeyw2jshJXskwXJduEeRgRNG+pw/alE4
+# 3rQly/Cr38UoAVR5EEYk0TgPJqFhkE26vSjmP/HEqpv22jVTT8nyPdNs3CPtqqBN
+# ZwnzOoA9PPs2TJDndqTd8jq/VjUvokxl6ODU2tHHyJFqLSNPNzsZlBjU1ZwQPNWx
+# HBn/j8hrm574rpyZlnjRzZxRFVtCJnJajQpKI5JA6IbeIsKTOtSbaKbfKX8GuTwO
+# vZ/EhpyCR0JxMoYJmXIJeUudcWn1Qf9/OXdk8YSNvosesn1oo6WQsQz/MYICJTCC
+# AiECAQEwgYMwbzELMAkGA1UEBhMCVVMxFTATBgNVBAoTDERpZ2lDZXJ0IEluYzEZ
+# MBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTEuMCwGA1UEAxMlRGlnaUNlcnQgQXNz
+# dXJlZCBJRCBDb2RlIFNpZ25pbmcgQ0EtMQIQC0japWK58eEmaEk9Yy13dzAJBgUr
+# DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
+# DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
+# hkiG9w0BCQQxFgQUIyK4FT9FWrPyWZECdjxVKLHlaegwDQYJKoZIhvcNAQEBBQAE
+# ggEAWCeckH+IBjdwYgdX5xcoxym7eZdag66hYaXnPX1j/ZcSse1SB31VElN+CqYm
+# voligW3O7N4hNl5xcywhEINsQLPVZPD1yePbvf/1c+miSrEx0VFWzkrEWxf6xh3W
+# V745+MGucqleGDX/AeNk9aCB1sSA8JG7KXCgLt5uEGf/RHV9RACkYzsJU1x5P+Y2
+# en4mhua2PtXazRSZexmnBidhq/8PRXXJWhseMGjZ/DRAvYOyISwO/U5U34/LNU1Q
+# Q4J/Ra1MB2FqIkuDDiB2kHwv+9wg71YsNW6RldEo5+JZsjCVkyH94Z2k5PAifUHl
+# fcZxQfaP3AG6bpYSD/18z5mRXA==
+# SIG # End signature block
