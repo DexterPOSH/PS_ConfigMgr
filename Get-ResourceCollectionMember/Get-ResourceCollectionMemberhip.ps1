@@ -1,4 +1,4 @@
-﻿function Get-ResourceCollectionMemberhip
+function Get-ResourceCollectionMemberhip
  {
 <#
     .Synopsis
@@ -133,7 +133,7 @@
                         #Get the Resource ID for the Resource using the input Name. Note that with the User Resources , forced to use the WQL LIKE Operator
                         #Because the LIKE operator can return more than one instance of the Objects.
                         Write-Verbose -Message "[PROCESS] : Querying the SMS_CombinedUserResources Class to fetch the ResourceID"
-                        $ResourceIDs = @(Get-CimInstance -Query "Select ResourceID FROM SMS_CombinedUserResources WHERE Name LIKE'%$Resourcename%'"  @hash)
+                        $ResourceIDs = @(Get-CimInstance -Query "Select Name,ResourceID FROM SMS_CombinedUserResources WHERE Name LIKE'%$Resourcename%'"  @hash)
                         
                                                                       
                         foreach ($ResourceID in $ResourceIDs) {
@@ -150,7 +150,7 @@
                                 $collectionInfo = Get-CimInstance -Query "Select Name FROM SMS_Collection WHERE CollectionID='$($Collection.CollectionID)'" @hash
                             
                                 [PSCustomobject]@{
-                                    Name = $Resourcename;
+                                    Name = $ResourceID.Name;
                                     ResourceType = 'User';
                                     CollectionName = $collectionInfo.Name;
                                     CollectionID = $Collection.CollectionID
